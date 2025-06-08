@@ -5,11 +5,6 @@ project(HashingTables)
 set(CMAKE_CXX_STANDARD 17)
 set(HASHING_TABLES_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-if (${CMAKE_BUILD_TYPE} STREQUAL Release)
-    message("Release mode")
-
-endif ()
-
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 
 # DEPENDENCIES

@@ -26,6 +26,7 @@
 
 #include <common/hash_table_entry.h>
 #include "common/hashing.h"
+#include<emmintrin.h>
 
 namespace ENCRYPTO {
 
@@ -55,11 +56,11 @@ class SimpleTable : public HashingTable {
 
   void SetMaximumBinSize(std::size_t size);
 
-  std::vector<uint64_t> ObtainEntryValues() const final;
-  std::vector<uint64_t> ObtainEntryValuesPadded() const;
-  std::vector<std::vector<uint64_t>> ObtainBinEntryValues() const;
-  std::vector<std::vector<uint64_t>> ObtainBinEntryIds() const;
-
+  std::vector<uint64_t> AsRawVector() const;
+  std::vector<__m128i> AsRawVectorNoID() const;
+  std::vector<uint64_t> AsRawVectorPadded() const;
+  std::vector<std::vector<uint64_t>> AsRaw2DVector() const;
+  std::tuple<std::vector<std::vector<__m128i>>, size_t> AsRaw2DVectorNoID();
   std::vector<std::size_t> GetNumOfElementsInBins() const final;
 
  private:

@@ -1,3 +1,5 @@
+// Original Work copyright (c) Oleksandr Tkachenko
+// Modified Work copyright (c) 2021 Microsoft Research
 //
 // \file cuckoo_hashing.cpp
 // \author Oleksandr Tkachenko
@@ -21,6 +23,9 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+// Modified by Akash Shah
+
+// Modified by Zhentaixie to support operations to get items easily for Sectric.
 
 #include "cuckoo_hashing.h"
 
@@ -87,7 +92,7 @@ bool CuckooTable::Print() const {
   return true;
 }
 
-std::vector<uint64_t> CuckooTable::ObtainEntryValues() const {
+std::vector<uint64_t> CuckooTable::AsRawVector() const {
   std::vector<uint64_t> raw_table;
   raw_table.reserve(num_bins_);
 
@@ -99,27 +104,22 @@ std::vector<uint64_t> CuckooTable::ObtainEntryValues() const {
   return raw_table;
 }
 
-std::vector<uint64_t> CuckooTable::ObtainEntryIds() const {
-  std::vector<uint64_t> id_table;
-  id_table.reserve(num_bins_);
-
+#include<tuple>
+std::tuple<std::vector<uint64_t>,std::vector<__m128i>> CuckooTable::AsRawVectorNoID() const {
+  std::vector<__m128i> raw_table;
+  std::vector<uint64_t> active_idx;
+  std::cout<<" !!!!!!!!!!!!1"<<DUMMY_ELEMENT<<" "<<num_bins_<<std::endl;
+  raw_table.reserve(num_bins_);
   for (auto i = 0ull; i < num_bins_; ++i) {
-    id_table.push_back(hash_table_.at(i).GetGlobalID());
+    auto ele=hash_table_.at(i).GetElement();
+    if(ele!=DUMMY_ELEMENT){
+      raw_table.push_back(_mm_set_epi64x(static_cast<uint64_t>(hash_table_.at(i).GetCurrentFunctinId()),ele));
+      // std::cout<<((uint64_t*)(&raw_table[i]))[0]<<" "<<((uint64_t*)(&raw_table[i]))[1]<<std::endl;
+      active_idx.emplace_back(i);
+    }// else raw_table.push_back(_mm_set_epi64x(DUMMY_ELEMENT,DUMMY_ELEMENT));
   }
-
-  return id_table;
-}
-
-std::vector<bool> CuckooTable::ObtainBinOccupancy() const {
-  // Shows whether the entry is not empty
-  std::vector<bool> occ_table;
-  occ_table.reserve(num_bins_);
-
-  for (auto i = 0ull; i < num_bins_; ++i) {
-    occ_table.push_back(!hash_table_.at(i).IsEmpty());
-  }
-
-  return occ_table;
+  std::cout<<" !!!!!!!!!!!!1"<<raw_table.size()<<std::endl;
+  return std::make_tuple(active_idx,raw_table);
 }
 
 std::vector<std::size_t> CuckooTable::GetNumOfElementsInBins() const {
@@ -190,5 +190,26 @@ bool CuckooTable::MapElementsToTable() {
   mapped_ = true;
 
   return true;
+}
+
+std::vector<uint64_t> CuckooTable::GetElementAddresses() {
+  std::vector<uint64_t> hash_addresses;
+  hash_addresses.reserve(elements_.size()*num_of_hash_functions_);
+
+  AllocateLUTs();
+  GenerateLUTs();
+
+  for(auto i = 0ull; i < elements_.size(); ++i) {
+    HashTableEntry current_entry(elements_.at(i), i, num_of_hash_functions_,
+                                 num_bins_);
+    //std::cout<<elements_.at(i) << std::endl;
+    auto addresses = HashToPosition(elements_.at(i));
+    current_entry.SetPossibleAddresses(std::move(addresses));
+    for(auto j = 0ull; j < num_of_hash_functions_; ++j) {
+      //current_entry.SetCurrentAddress(j);
+      hash_addresses[i*num_of_hash_functions_+j]= current_entry.GetAddressAt(j);
+    }
+  }
+  return hash_addresses;
 }
 }

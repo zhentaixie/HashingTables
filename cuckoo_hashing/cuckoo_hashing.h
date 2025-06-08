@@ -1,5 +1,7 @@
 #pragma once
 
+// Original Work copyright (c) Oleksandr Tkachenko
+// Modified Work copyright (c) 2021 Microsoft Research
 //
 // \file cuckoo_hashing.h
 // \author Oleksandr Tkachenko
@@ -23,7 +25,8 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
+// Modified by Akash Shah
+#include <emmintrin.h>
 #include "common/hashing.h"
 
 namespace ENCRYPTO {
@@ -32,6 +35,7 @@ class HashTableEntry;
 
 class CuckooTable : public HashingTable {
  public:
+  std::vector<HashTableEntry> hash_table_, stash_;
   CuckooTable() = delete;
 
   CuckooTable(double epsilon) : CuckooTable(epsilon, 0, 0){};
@@ -56,16 +60,13 @@ class CuckooTable : public HashingTable {
 
   auto GetStashSize() const { return stash_.size(); }
 
-  std::vector<uint64_t> ObtainEntryValues() const final;
-
-  std::vector<uint64_t> ObtainEntryIds() const;
-
-  std::vector<bool> ObtainBinOccupancy() const;
+  std::vector<uint64_t> AsRawVector() const;
+  std::tuple<std::vector<uint64_t>,std::vector<__m128i>> AsRawVectorNoID() const;
 
   std::vector<std::size_t> GetNumOfElementsInBins() const final;
+  std::vector<uint64_t> GetElementAddresses();
 
  private:
-  std::vector<HashTableEntry> hash_table_, stash_;
   std::size_t recursion_limiter_ = 200;
 
   struct Statistics {

@@ -73,7 +73,7 @@ void SimpleTable::SetMaximumBinSize(std::size_t size) {
   pad_to_maximum_bin_size = true;
 }
 
-std::vector<uint64_t> SimpleTable::ObtainEntryValues() const {
+std::vector<uint64_t> SimpleTable::AsRawVector() const {
   std::vector<uint64_t> raw_table;
   raw_table.reserve(elements_.size());
 
@@ -86,8 +86,21 @@ std::vector<uint64_t> SimpleTable::ObtainEntryValues() const {
 
   return raw_table;
 }
+std::vector<__m128i> SimpleTable::AsRawVectorNoID() const {
+  std::vector<__m128i> raw_table;
+  raw_table.reserve(elements_.size());
 
-std::vector<std::vector<uint64_t>> SimpleTable::ObtainBinEntryValues() const {
+  for (auto i = 0ull; i < num_bins_; ++i) {
+    for (auto j = 0ull; j < hash_table_.at(i).size(); ++j) {
+      raw_table.push_back(_mm_set_epi64x(static_cast<uint64_t>(hash_table_.at(i).at(j).GetCurrentFunctinId()),
+          hash_table_.at(i).at(j).GetElement() ));
+    }
+  }
+
+  return raw_table;
+}
+
+std::vector<std::vector<uint64_t>> SimpleTable::AsRaw2DVector() const {
   std::vector<std::vector<uint64_t>> raw_table(num_bins_);
 
   for (auto i = 0ull; i < num_bins_; ++i) {
@@ -101,19 +114,6 @@ std::vector<std::vector<uint64_t>> SimpleTable::ObtainBinEntryValues() const {
   return raw_table;
 }
 
-std::vector<std::vector<uint64_t>> SimpleTable::ObtainBinEntryIds() const {
-  std::vector<std::vector<uint64_t>> id_table(num_bins_);
-
-  for (auto i = 0ull; i < num_bins_; ++i) {
-    for (auto j = 0ull; j < hash_table_.at(i).size(); ++j) {
-      id_table.at(i).push_back(hash_table_.at(i).at(j).GetGlobalID());
-    }
-  }
-
-  return id_table;
-}
-
-
 std::vector<std::size_t> SimpleTable::GetNumOfElementsInBins() const {
   std::vector<uint64_t> num_elements_in_bins(hash_table_.size(), 0);
   for (auto i = 0ull; i < hash_table_.size(); ++i) {
@@ -122,7 +122,7 @@ std::vector<std::size_t> SimpleTable::GetNumOfElementsInBins() const {
   return num_elements_in_bins;
 }
 
-std::vector<uint64_t> SimpleTable::ObtainEntryValuesPadded() const {
+std::vector<uint64_t> SimpleTable::AsRawVectorPadded() const {
   std::vector<uint64_t> raw_table(maximum_bin_size_ * num_bins_, DUMMY_ELEMENT);
 
   for (auto i = 0ull; i < num_bins_; ++i) {
@@ -133,7 +133,31 @@ std::vector<uint64_t> SimpleTable::ObtainEntryValuesPadded() const {
 
   return raw_table;
 }
+#include<tuple>
+#include<emmintrin.h>
+std::tuple<std::vector<std::vector<__m128i>>, size_t> SimpleTable::AsRaw2DVectorNoID() {
+  std::vector<std::vector<__m128i>> raw_table(num_bins_);
+  size_t max_columns = 0;
+  AllocateLUTs();
+  GenerateLUTs();
 
+  for (auto element_id = 0ull; element_id < elements_.size(); ++element_id) {
+    HashTableEntry current_entry(elements_.at(element_id), element_id, num_of_hash_functions_,
+                                 num_bins_);
+    // if(element_id%1000000==0)std::cout<<element_id<<std::endl;
+    // find the new element's mappings and put them to the corresponding std::vector
+    auto addresses = HashToPosition(elements_.at(element_id));
+    current_entry.SetPossibleAddresses(std::move(addresses));
+
+    for (auto i = 0ull; i < num_of_hash_functions_; ++i) {
+      HashTableEntry entry_copy(current_entry);
+      entry_copy.SetCurrentAddress(i);
+      raw_table.at(entry_copy.GetAddressAt(i)).push_back(_mm_set_epi64x(static_cast<uint64_t>(entry_copy.GetCurrentFunctinId()),
+          entry_copy.GetElement() ));
+    }
+  }
+  return std::make_tuple(raw_table, max_columns);
+}
 SimpleTable::SimpleTable(double epsilon, std::size_t num_of_bins, std::size_t seed) {
   epsilon_ = epsilon;
   num_bins_ = num_of_bins;
@@ -168,7 +192,7 @@ bool SimpleTable::MapElementsToTable() {
   for (auto element_id = 0ull; element_id < elements_.size(); ++element_id) {
     HashTableEntry current_entry(elements_.at(element_id), element_id, num_of_hash_functions_,
                                  num_bins_);
-
+    // if(element_id%1000000==0)std::cout<<element_id<<std::endl;
     // find the new element's mappings and put them to the corresponding std::vector
     auto addresses = HashToPosition(elements_.at(element_id));
     current_entry.SetPossibleAddresses(std::move(addresses));
