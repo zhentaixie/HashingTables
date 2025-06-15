@@ -28,7 +28,7 @@
 #include <vector>
 #include <limits>
 namespace ENCRYPTO {
-constexpr auto DUMMY_ELEMENT = std::numeric_limits<std::size_t>::max();
+constexpr auto DUMMY_ELEMENT = (uint64_t)(-10000);
 
 class HashTableEntry {
  public:

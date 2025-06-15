@@ -106,16 +106,16 @@ std::vector<uint64_t> CuckooTable::AsRawVector() const {
 
 #include<tuple>
 #include<unordered_map>
-std::tuple<std::unordered_map<uint64_t,uint64_t>,std::vector<__m128i>> CuckooTable::AsRawVectorNoID() const {
+std::tuple<std::unordered_map<uint64_t,std::vector<uint64_t>>,std::vector<__m128i>> CuckooTable::AsRawVectorNoID() const {
   std::vector<__m128i> raw_table;
-  std::unordered_map<uint64_t,uint64_t> idx_map;
+  std::unordered_map<uint64_t,std::vector<uint64_t>> idx_map;
   // std::cout<<" !!!!!!!!!!!!1"<<DUMMY_ELEMENT<<" "<<num_bins_<<std::endl;
   raw_table.reserve(num_bins_);
   for (auto i = 0ull; i < num_bins_; ++i) {
     auto ele=hash_table_.at(i).GetElement();
     if(ele!=DUMMY_ELEMENT){
       raw_table.push_back(_mm_set_epi64x(static_cast<uint64_t>(hash_table_.at(i).GetCurrentFunctinId()),ele));
-      idx_map[ele] = raw_table.size()-1;
+      idx_map[ele].push_back(raw_table.size()-1);
     }else{
       raw_table.push_back(_mm_set_epi64x(DUMMY_ELEMENT,DUMMY_ELEMENT));
     }
