@@ -135,17 +135,15 @@ std::vector<uint64_t> SimpleTable::AsRawVectorPadded() const {
 }
 #include<tuple>
 #include<emmintrin.h>
-std::tuple<std::vector<std::vector<__m128i>>, size_t> SimpleTable::AsRaw2DVectorNoID() {
+std::tuple<std::vector<std::vector<__m128i>>, std::vector<std::vector<size_t>>> SimpleTable::AsRaw2DVectorNoID() {
   std::vector<std::vector<__m128i>> raw_table(num_bins_);
-  size_t max_columns = 0;
+  std::vector<std::vector<size_t>> idx_map(num_bins_);
   AllocateLUTs();
   GenerateLUTs();
 
   for (auto element_id = 0ull; element_id < elements_.size(); ++element_id) {
     HashTableEntry current_entry(elements_.at(element_id), element_id, num_of_hash_functions_,
                                  num_bins_);
-    // if(element_id%1000000==0)std::cout<<element_id<<std::endl;
-    // find the new element's mappings and put them to the corresponding std::vector
     auto addresses = HashToPosition(elements_.at(element_id));
     current_entry.SetPossibleAddresses(std::move(addresses));
 
@@ -154,9 +152,10 @@ std::tuple<std::vector<std::vector<__m128i>>, size_t> SimpleTable::AsRaw2DVector
       entry_copy.SetCurrentAddress(i);
       raw_table.at(entry_copy.GetAddressAt(i)).push_back(_mm_set_epi64x(static_cast<uint64_t>(entry_copy.GetCurrentFunctinId()),
           entry_copy.GetElement() ));
+      idx_map.at(entry_copy.GetAddressAt(i)).push_back(element_id);
     }
   }
-  return std::make_tuple(raw_table, max_columns);
+  return std::make_tuple(raw_table, idx_map);
 }
 SimpleTable::SimpleTable(double epsilon, std::size_t num_of_bins, std::size_t seed) {
   epsilon_ = epsilon;

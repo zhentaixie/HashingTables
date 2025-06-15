@@ -60,7 +60,7 @@ class SimpleTable : public HashingTable {
   std::vector<__m128i> AsRawVectorNoID() const;
   std::vector<uint64_t> AsRawVectorPadded() const;
   std::vector<std::vector<uint64_t>> AsRaw2DVector() const;
-  std::tuple<std::vector<std::vector<__m128i>>, size_t> AsRaw2DVectorNoID();
+  std::tuple<std::vector<std::vector<__m128i>>, std::vector<std::vector<size_t>>> AsRaw2DVectorNoID();
   std::vector<std::size_t> GetNumOfElementsInBins() const final;
 
  private:

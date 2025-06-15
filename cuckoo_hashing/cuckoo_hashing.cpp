@@ -105,21 +105,23 @@ std::vector<uint64_t> CuckooTable::AsRawVector() const {
 }
 
 #include<tuple>
-std::tuple<std::vector<uint64_t>,std::vector<__m128i>> CuckooTable::AsRawVectorNoID() const {
+#include<unordered_map>
+std::tuple<std::unordered_map<uint64_t,uint64_t>,std::vector<__m128i>> CuckooTable::AsRawVectorNoID() const {
   std::vector<__m128i> raw_table;
-  std::vector<uint64_t> active_idx;
-  std::cout<<" !!!!!!!!!!!!1"<<DUMMY_ELEMENT<<" "<<num_bins_<<std::endl;
+  std::unordered_map<uint64_t,uint64_t> idx_map;
+  // std::cout<<" !!!!!!!!!!!!1"<<DUMMY_ELEMENT<<" "<<num_bins_<<std::endl;
   raw_table.reserve(num_bins_);
   for (auto i = 0ull; i < num_bins_; ++i) {
     auto ele=hash_table_.at(i).GetElement();
     if(ele!=DUMMY_ELEMENT){
       raw_table.push_back(_mm_set_epi64x(static_cast<uint64_t>(hash_table_.at(i).GetCurrentFunctinId()),ele));
-      // std::cout<<((uint64_t*)(&raw_table[i]))[0]<<" "<<((uint64_t*)(&raw_table[i]))[1]<<std::endl;
-      active_idx.emplace_back(i);
-    }// else raw_table.push_back(_mm_set_epi64x(DUMMY_ELEMENT,DUMMY_ELEMENT));
+      idx_map[ele] = raw_table.size()-1;
+    }else{
+      raw_table.push_back(_mm_set_epi64x(DUMMY_ELEMENT,DUMMY_ELEMENT));
+    }
   }
-  std::cout<<" !!!!!!!!!!!!1"<<raw_table.size()<<std::endl;
-  return std::make_tuple(active_idx,raw_table);
+  // std::cout<<" !!!!!!!!!!!!1"<<raw_table.size()<<std::endl;
+  return std::make_tuple(idx_map,raw_table);
 }
 
 std::vector<std::size_t> CuckooTable::GetNumOfElementsInBins() const {
